@@ -28,3 +28,16 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+Thumbs.db
+
+# Maven build
+/target/
+
+
+# Java
+*.class
+*.log
+
+
+# Application data (local runtime state)
+/data/
