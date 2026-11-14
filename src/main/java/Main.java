@@ -6,6 +6,7 @@ public class Main {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
+        User currentUser = null;
 
         System.out.println("Добро пожаловать в Link Shorted Service!");
         System.out.println("Введите 'help' для списка команд.");
@@ -30,7 +31,7 @@ public class Main {
                 }
 
                 case "create": {
-                    handleCreateCommand(scanner);
+                    currentUser = handleCreateCommand(scanner, currentUser);
 
                     break;
                 }
@@ -56,17 +57,25 @@ public class Main {
         System.out.println("  exit - завершить программу");
     }
 
-    private static void handleCreateCommand(Scanner scanner) {
+    private static User handleCreateCommand(Scanner scanner, User currentUser) {
         System.out.println("Введите URL, который хотите сократить:");
 
         String url = scanner.nextLine().trim();
 
         if (!validateUrl(url)) {
             System.out.println("Некорректный URL. Используйте http:// или https://");
-            return;
+            return currentUser;
+        }
+
+        if (currentUser == null) {
+            currentUser = new User();
+            System.out.println("Создан пользователь: " + currentUser.getId());
+        } else {
+            System.out.println("Текущий пользователь: " + currentUser.getId());
         }
 
         System.out.println("URL принят: " + url);
+        return currentUser;
     }
 
     private static boolean validateUrl(String url) {
