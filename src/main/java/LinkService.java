@@ -1,6 +1,7 @@
 import java.util.UUID;
 
 public class LinkService {
+
     private final LinkRepository repository;
     private final ShortCodeGenerator generator;
 
@@ -9,9 +10,14 @@ public class LinkService {
         this.generator = generator;
     }
 
-    public ShortLink createShortLink(String originalUrl, UUID ownerId) {
+    public ShortLink createShortLink(String originalUrl, UUID ownerId, int maxClicks) {
         if (originalUrl == null || originalUrl.isBlank() || ownerId == null) {
+
             throw new IllegalArgumentException("Неверный URL или ownerId");
+        }
+
+        if (maxClicks < 1) {
+            throw new IllegalArgumentException("Лимит переходов должен быть больше нуля");
         }
 
         for (int i = 0; i < 100; i++) {
@@ -20,18 +26,27 @@ public class LinkService {
             ShortLink shortLink = new ShortLink(
                     originalUrl,
                     shortCode,
-                    ownerId
-            );
+                    ownerId,
+                    maxClicks);
 
             if (repository.add(shortLink)) {
                 return shortLink;
             }
         }
 
-
         throw new IllegalStateException(
-                "Не удалось создать уникальную короткую ссылку"
-        );
+                "Не удалось создать уникальную короткую ссылку");
+
+    }
+
+    public boolean registerClick(String code) {
+        ShortLink shortLink = findByCode(code);
+
+        if (shortLink == null) {
+            return false;
+        }
+
+        return shortLink.registerClick();
 
     }
 
@@ -41,6 +56,5 @@ public class LinkService {
         }
 
         return repository.findByCode(code);
-
     }
 }
