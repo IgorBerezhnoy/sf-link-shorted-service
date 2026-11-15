@@ -1,3 +1,5 @@
+import java.awt.*;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Scanner;
@@ -37,7 +39,12 @@ public class Main {
 
                 case "find": {
                     handleFindCommand(scanner, linkService);
+                    break;
 
+                }
+
+                case "open": {
+                    handleOpenCommand(scanner, linkService);
                     break;
 
                 }
@@ -65,6 +72,7 @@ public class Main {
         System.out.println("Доступные команды:");
         System.out.println("  help - показать помощь");
         System.out.println("  create - создать короткую ссылку");
+        System.out.println("  open - открывает длинную ссылку в браузере по переданной короткой ссылке");
         System.out.println("  find - найти созданную короткую ссылку");
         System.out.println("  exit - завершить программу");
     }
@@ -89,9 +97,7 @@ public class Main {
         System.out.println("URL принят: " + url);
 
         try {
-            ShortLink link = linkService.createShortLink(
-                    url,
-                    currentUser.getId());
+            ShortLink link = linkService.createShortLink(url, currentUser.getId());
 
             System.out.println("Короткая ссылка: " + SHORT_LINK_PREFIX + link.getShortCode());
         } catch (IllegalStateException e) {
@@ -112,9 +118,8 @@ public class Main {
             String scheme = uri.getScheme();
             String host = uri.getHost();
 
-            boolean validScheme = scheme != null &&
-                    (scheme.equalsIgnoreCase("https") ||
-                            scheme.equalsIgnoreCase("http"));
+            boolean validScheme = scheme != null
+                    && (scheme.equalsIgnoreCase("https") || scheme.equalsIgnoreCase("http"));
             boolean validHost = host != null && !host.isBlank();
 
             return validScheme && validHost;
@@ -124,13 +129,9 @@ public class Main {
         }
     }
 
-    private static void handleFindCommand(
-            Scanner scanner,
-            LinkService linkService
-    ) {
+    private static ShortLink findLinkFromInput(Scanner scanner, LinkService linkService) {
         System.out.println("Введите вашу короткую ссылку или код:");
         String input = scanner.nextLine().trim();
-
 
         boolean hasPrefix = input.startsWith(SHORT_LINK_PREFIX);
         String shortCode = input;
@@ -142,15 +143,68 @@ public class Main {
         if (shortCode.isBlank()) {
             System.out.println("Короткая ссылка не может быть пустой.");
 
-            return;
+            return null;
+        }
+        ShortLink shortLink = linkService.findByCode(shortCode);
+
+        if (shortLink == null) {
+            System.out.println("Ваша ссылка не найдена.");
+
+            return null;
         }
 
-        ShortLink shortLink = linkService.findByCode(shortCode);
+        return shortLink;
+    }
+
+    private static void handleOpenCommand(Scanner scanner, LinkService linkService) {
+        ShortLink shortLink = findLinkFromInput(scanner, linkService);
+
+        if (shortLink != null) {
+            try {
+                if (!Desktop.isDesktopSupported()) {
+                    System.out.println("Desktop не поддерживается в этой среде.");
+                    return;
+                }
+
+                Desktop desktop = Desktop.getDesktop();
+
+                if (!desktop.isSupported(Desktop.Action.BROWSE)) {
+                    System.out.println("Открытие браузера не поддерживается.");
+                    return;
+                }
+
+                desktop.browse(URI.create(shortLink.getOriginalUrl()));
+
+                System.out.println(
+                        "Запрос на открытие ссылки передан браузеру: "
+                                + shortLink.getOriginalUrl());
+            } catch (IllegalArgumentException e) {
+                System.out.println("Ошибка: некорректный формат URL.");
+
+            } catch (SecurityException e) {
+                System.out.println(
+                        "Ошибка: недостаточно прав для открытия браузера."
+                );
+
+            } catch (UnsupportedOperationException e) {
+                System.out.println(
+                        "Ошибка: открытие браузера не поддерживается в текущей среде."
+                );
+
+            } catch (IOException e) {
+                System.out.println(
+                        "Ошибка: не удалось передать ссылку браузеру."
+                );
+                System.err.println("Подробности: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void handleFindCommand(Scanner scanner, LinkService linkService) {
+        ShortLink shortLink = findLinkFromInput(scanner, linkService);
 
         if (shortLink != null) {
             System.out.println("Исходный URL: " + shortLink.getOriginalUrl());
-        } else {
-            System.out.println("Ваша ссылка не найдена.");
         }
 
     }
