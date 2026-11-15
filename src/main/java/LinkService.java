@@ -34,4 +34,13 @@ public class LinkService {
         );
 
     }
+
+    public ShortLink findByCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+
+        return repository.findByCode(code);
+
+    }
 }
