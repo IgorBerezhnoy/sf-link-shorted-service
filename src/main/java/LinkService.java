@@ -58,6 +58,37 @@ public class LinkService {
 
     }
 
+    public boolean deleteLink(String code, UUID ownerId) {
+        ShortLink link = findByCode(code);
+
+        if (link == null || !link.getOwnerId().equals(ownerId)) {
+            return false;
+        }
+
+        return repository.deleteByCode(code);
+    }
+
+    public boolean updateClickLimit(
+            String code,
+            UUID ownerId,
+            int newMaxClicks
+    ) {
+        if (newMaxClicks < 1) {
+            throw new IllegalArgumentException(
+                    "Лимит переходов должен быть больше нуля"
+            );
+        }
+
+        ShortLink link = findByCode(code);
+
+        if (link == null || !link.getOwnerId().equals(ownerId)) {
+            return false;
+        }
+
+        link.setMaxClicks(newMaxClicks);
+        return true;
+    }
+
     public int removeExpiredLinks() {
         return repository.removeExpiredLinks();
     }

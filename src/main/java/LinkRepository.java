@@ -18,6 +18,9 @@ public class LinkRepository {
         return shortLinksMap.get(code);
 
     }
+    public boolean deleteByCode(String code) {
+        return shortLinksMap.remove(code) != null;
+    }
 
     public int removeExpiredLinks() {
         int before = shortLinksMap.size();

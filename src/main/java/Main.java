@@ -32,7 +32,7 @@ public class Main {
             }
 
             String command = scanner.nextLine().trim();
-            String[] commandParts = command.split("\\s+", 3);
+            String[] commandParts = command.split("\\s+");
             String mainCommand = commandParts[0];
 
             // automatic removal of outdated links
@@ -76,6 +76,11 @@ public class Main {
                     break;
                 }
 
+                case "link": {
+                    handleLinkCommand(commandParts, currentUser, linkService);
+                    break;
+                }
+
                 case "": {
                     // Ignore the empty command
                     break;
@@ -101,6 +106,8 @@ public class Main {
         System.out.println("  user switch <UUID> - переключиться на другого пользователя по UUID");
         System.out.println("  user current - показать текущий UUID");
         System.out.println("  user list - показать список всех пользователей");
+        System.out.println("  link delete <code> - удалить ссылку по коду");
+        System.out.println("  link limit <code> <number> - изменить лимит ссылки по коду");
         System.out.println("  exit - завершить программу");
     }
 
@@ -432,6 +439,78 @@ public class Main {
             default: {
                 System.out.println("Неизвестная команда пользователя: " + action);
                 return currentUser;
+            }
+        }
+    }
+
+    private static void handleLinkCommand(
+            String[] commandParts,
+            User currentUser,
+            LinkService linkService
+    ) {
+        if (currentUser == null) {
+            System.out.println("Нет активного пользователя.");
+            return;
+        }
+
+        if (commandParts.length < 2) {
+            System.out.println("Доступные команды: link delete, link limit");
+            return;
+        }
+
+        String action = commandParts[1];
+
+        switch (action) {
+            case "delete": {
+                if (commandParts.length != 3) {
+                    System.out.println("Использование: link delete <code>");
+                    return;
+                }
+
+                boolean deleted = linkService.deleteLink(
+                        commandParts[2],
+                        currentUser.getId()
+                );
+
+                if (deleted) {
+                    System.out.println("Ссылка успешно удалена.");
+                } else {
+                    System.out.println("Ссылка не найдена или у вас нет прав.");
+                }
+                break;
+            }
+
+            case "limit": {
+                if (commandParts.length != 4) {
+                    System.out.println("Использование: link limit <code> <number>");
+                    return;
+                }
+
+                try {
+                    int newMaxClicks = Integer.parseInt(commandParts[3]);
+
+                    boolean updated = linkService.updateClickLimit(
+                            commandParts[2],
+                            currentUser.getId(),
+                            newMaxClicks
+                    );
+
+                    if (updated) {
+                        System.out.println("Лимит переходов обновлён.");
+                    } else {
+                        System.out.println("Ссылка не найдена или у вас нет прав.");
+                    }
+
+                } catch (NumberFormatException e) {
+                    System.out.println("Ошибка: лимит должен быть целым числом.");
+                } catch (IllegalArgumentException e) {
+                    System.out.println("Ошибка: " + e.getMessage());
+                }
+                break;
+            }
+
+            default: {
+                System.out.println("Неизвестная команда: link " + action);
             }
         }
     }
