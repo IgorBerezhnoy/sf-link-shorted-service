@@ -1,7 +1,8 @@
-import java.awt.Desktop;
+import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.util.Scanner;
 
 public class Main {
@@ -107,11 +108,58 @@ public class Main {
             return currentUser;
         }
 
+        Duration lifetime;
+        String lifetimeDescription;
+
+        System.out.println("Выберите срок действия ссылки:\n" +
+                "1 - 1 час\n" +
+                "2 - 1 день\n" +
+                "3 - 7 дней");
+
+        try {
+            String input = scanner.nextLine().trim();
+            int lifetimeOption = Integer.parseInt(input);
+
+            switch (lifetimeOption) {
+                case (1): {
+                    lifetime = Duration.ofHours(1);
+                    lifetimeDescription = "1 час";
+                    break;
+                }
+
+                case (2): {
+                    lifetime = Duration.ofDays(1);
+                    lifetimeDescription = "1 день";
+                    break;
+
+                }
+                case (3): {
+                    lifetimeDescription = "7 дней";
+
+                    lifetime = Duration.ofDays(7);
+                    break;
+
+                }
+                default: {
+                    System.out.println("Ошибка: выберите вариант от 1 до 3.");
+                    return currentUser;
+                }
+
+
+            }
+
+
+        } catch (NumberFormatException e) {
+            System.out.println("Ошибка: введите целое число.");
+            return currentUser;
+        }
+
+
         boolean isNewUser = currentUser == null;
         User userToUse = isNewUser ? new User() : currentUser;
 
         try {
-            ShortLink link = linkService.createShortLink(url, userToUse.getId(), maxCount);
+            ShortLink link = linkService.createShortLink(url, userToUse.getId(), maxCount, lifetime);
 
             System.out.println();
 
@@ -124,6 +172,7 @@ public class Main {
             System.out.println("URL принят: " + url);
             System.out.println("Короткая ссылка: " + SHORT_LINK_PREFIX + link.getShortCode());
             System.out.println("Лимит переходов: " + link.getMaxClicks());
+            System.out.println("Срок действия ссылки: " + lifetimeDescription);
 
             System.out.println();
 
@@ -198,6 +247,11 @@ public class Main {
             return;
         }
 
+        if (shortLink.isExpired()) {
+            System.out.println("Срок действия ссылки истёк!");
+            return;
+        }
+
         try {
             if (!Desktop.isDesktopSupported()) {
                 System.out.println("Desktop не поддерживается в этой среде.");
@@ -214,7 +268,12 @@ public class Main {
             boolean clickRegistered = linkService.registerClick(shortLink.getShortCode());
 
             if (!clickRegistered) {
-                System.out.println("Лимит переходов исчерпан! Ссылка больше недоступна.");
+                if (shortLink.isExpired()) {
+                    System.out.println("Срок действия ссылки истёк!");
+                } else {
+                    System.out.println("Лимит переходов исчерпан! Ссылка больше недоступна.");
+
+                }
                 return;
             }
 
@@ -226,7 +285,7 @@ public class Main {
             System.out
                     .println("Использовано переходов: " + shortLink.getClickCount() + " / " + shortLink.getMaxClicks());
 
-            if (!shortLink.canOpen()) {
+            if (shortLink.getClickCount() >= shortLink.getMaxClicks()) {
                 System.out.println("Лимит достигнут. Следующий переход будет заблокирован.");
             }
 

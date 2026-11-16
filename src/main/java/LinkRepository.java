@@ -19,6 +19,12 @@ public class LinkRepository {
 
     }
 
+    public int removeExpiredLinks() {
+        int before = shortLinksMap.size();
+        shortLinksMap.values().removeIf(ShortLink::isExpired);
+        return before - shortLinksMap.size();
+    }
+
     public boolean exists(String code) {
         return shortLinksMap.containsKey(code);
     }

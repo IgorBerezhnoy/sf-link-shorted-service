@@ -1,3 +1,5 @@
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 public class ShortLink {
@@ -7,12 +9,17 @@ public class ShortLink {
     private final UUID ownerId;
     private int maxClicks;
     private int clickCount;
+    private final Instant expiresAt;
 
-    public ShortLink(String originalUrl, String shortCode, UUID ownerId, int maxClicks) {
+    public ShortLink(String originalUrl, String shortCode, UUID ownerId, int maxClicks, Duration lifetime) {
 
         if (maxClicks < 1) {
+            throw new IllegalArgumentException("maxClicks должен быть больше нуля");
+        }
+
+        if (lifetime == null || lifetime.isZero() || lifetime.isNegative()) {
             throw new IllegalArgumentException(
-                    "maxClicks должен быть больше нуля"
+                    "Lifetime должен быть положительным"
             );
         }
 
@@ -20,6 +27,7 @@ public class ShortLink {
         this.shortCode = shortCode;
         this.ownerId = ownerId;
         this.maxClicks = maxClicks;
+        this.expiresAt = Instant.now().plus(lifetime);
     }
 
     public String getOriginalUrl() {
@@ -42,19 +50,24 @@ public class ShortLink {
         return clickCount;
     }
 
+    public Instant getExpiresAt() {
+        return expiresAt;
+    }
 
     public void setMaxClicks(int maxClicks) {
         if (maxClicks < 1) {
-            throw new IllegalArgumentException(
-                    "maxClicks должен быть больше нуля"
-            );
+            throw new IllegalArgumentException("maxClicks должен быть больше нуля");
         }
 
         this.maxClicks = maxClicks;
     }
 
     public boolean canOpen() {
-        return clickCount < maxClicks;
+        return (clickCount < maxClicks) && !isExpired();
+    }
+
+    public boolean isExpired() {
+        return Instant.now().compareTo(expiresAt) >= 0;
     }
 
     public boolean registerClick() {

@@ -1,3 +1,4 @@
+import java.time.Duration;
 import java.util.UUID;
 
 public class LinkService {
@@ -10,9 +11,9 @@ public class LinkService {
         this.generator = generator;
     }
 
-    public ShortLink createShortLink(String originalUrl, UUID ownerId, int maxClicks) {
-        if (originalUrl == null || originalUrl.isBlank() || ownerId == null) {
+    public ShortLink createShortLink(String originalUrl, UUID ownerId, int maxClicks, Duration lifetime) {
 
+        if (originalUrl == null || originalUrl.isBlank() || ownerId == null) {
             throw new IllegalArgumentException("Неверный URL или ownerId");
         }
 
@@ -20,6 +21,12 @@ public class LinkService {
             throw new IllegalArgumentException("Лимит переходов должен быть больше нуля");
         }
 
+        if (lifetime == null || lifetime.isZero() || lifetime.isNegative()) {
+            throw new IllegalArgumentException(
+                    "Lifetime должен быть положительным"
+            );
+        }
+        
         for (int i = 0; i < 100; i++) {
             String shortCode = generator.generate();
 
@@ -27,7 +34,8 @@ public class LinkService {
                     originalUrl,
                     shortCode,
                     ownerId,
-                    maxClicks);
+                    maxClicks,
+                    lifetime);
 
             if (repository.add(shortLink)) {
                 return shortLink;
