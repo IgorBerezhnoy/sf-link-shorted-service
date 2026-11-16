@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.Scanner;
+import java.util.UUID;
 
 public class Main {
 
@@ -13,6 +14,7 @@ public class Main {
         LinkRepository repository = new LinkRepository();
         ShortCodeGenerator generator = new ShortCodeGenerator();
         LinkService linkService = new LinkService(repository, generator);
+        UserRepository userRepository = new UserRepository();
 
         Scanner scanner = new Scanner(System.in);
         User currentUser = null;
@@ -30,8 +32,17 @@ public class Main {
             }
 
             String command = scanner.nextLine().trim();
+            String[] commandParts = command.split("\\s+", 3);
+            String mainCommand = commandParts[0];
 
-            switch (command) {
+            // automatic removal of outdated links
+            int removedLinksCount = linkService.removeExpiredLinks();
+
+            if (removedLinksCount > 0) {
+                System.out.println("Автоматическая очистка: удалено просроченных ссылок: " + removedLinksCount);
+            }
+
+            switch (mainCommand) {
                 case "help": {
                     printHelp();
                     break;
@@ -54,7 +65,14 @@ public class Main {
                 }
 
                 case "create": {
-                    currentUser = handleCreateCommand(scanner, currentUser, linkService);
+                    currentUser = handleCreateCommand(scanner, currentUser, linkService, userRepository);
+                    break;
+                }
+
+                case "user": {
+                    currentUser = handleUserCommand(
+                            commandParts, currentUser, userRepository
+                    );
                     break;
                 }
 
@@ -79,10 +97,17 @@ public class Main {
         System.out.println("  create - создать короткую ссылку");
         System.out.println("  open - открыть исходную ссылку в браузере");
         System.out.println("  find - найти исходный URL по короткой ссылке");
+        System.out.println("  user new - начать работу нового пользователя");
+        System.out.println("  user switch <UUID> - переключиться на другого пользователя по UUID");
+        System.out.println("  user current - показать текущий UUID");
+        System.out.println("  user list - показать список всех пользователей");
         System.out.println("  exit - завершить программу");
     }
 
-    private static User handleCreateCommand(Scanner scanner, User currentUser, LinkService linkService) {
+    private static User handleCreateCommand(Scanner scanner,
+                                            User currentUser,
+                                            LinkService linkService,
+                                            UserRepository userRepository) {
         System.out.println("Введите URL, который хотите сократить:");
         String url = scanner.nextLine().trim();
 
@@ -161,6 +186,11 @@ public class Main {
         try {
             ShortLink link = linkService.createShortLink(url, userToUse.getId(), maxCount, lifetime);
 
+            if (isNewUser) {
+                userRepository.add(userToUse);
+            }
+
+
             System.out.println();
 
             if (isNewUser) {
@@ -187,6 +217,7 @@ public class Main {
             return currentUser;
         }
     }
+
 
     private static boolean validateUrl(String url) {
         if (url == null || url.isBlank()) {
@@ -314,5 +345,94 @@ public class Main {
         System.out.println("Исходный URL: " + shortLink.getOriginalUrl());
 
         System.out.println("Использовано переходов: " + shortLink.getClickCount() + " / " + shortLink.getMaxClicks());
+    }
+
+    private static User handleUserCommand(
+            String[] commandParts,
+            User currentUser,
+            UserRepository userRepository
+    ) {
+        if (commandParts.length < 2) {
+            System.out.println("Доступные команды: user new, switch, current, list");
+            return currentUser;
+        }
+
+        String action = commandParts[1];
+
+        switch (action) {
+            case "new": {
+                if (commandParts.length != 2) {
+                    System.out.println("Использование: user new");
+                    return currentUser;
+                }
+
+                System.out.println("Начата новая сессия пользователя.");
+                System.out.println("UUID будет создан при создании первой ссылки.");
+                return null;
+            }
+
+            case "current": {
+                if (commandParts.length != 2) {
+                    System.out.println("Использование: user current");
+                    return currentUser;
+                }
+
+                if (currentUser == null) {
+                    System.out.println("Текущий пользователь не выбран.");
+                } else {
+                    System.out.println("Текущий UUID: " + currentUser.getId());
+                }
+                return currentUser;
+            }
+
+            case "list": {
+                if (commandParts.length != 2) {
+                    System.out.println("Использование: user list");
+                    return currentUser;
+                }
+
+                if (userRepository.findAll().isEmpty()) {
+                    System.out.println("Пользователей пока нет.");
+                    return currentUser;
+                }
+
+                System.out.println("Список пользователей:");
+
+                for (User user : userRepository.findAll()) {
+                    System.out.println(user.getId());
+                }
+
+                return currentUser;
+            }
+
+            case "switch": {
+                if (commandParts.length != 3) {
+                    System.out.println("Использование: user switch <UUID>");
+                    return currentUser;
+                }
+
+                try {
+                    UUID userId = UUID.fromString(commandParts[2]);
+                    User user = userRepository.findById(userId);
+
+                    if (user == null) {
+                        System.out.println("Пользователь не найден.");
+                        return currentUser;
+                    }
+
+                    System.out.println("Вы переключились на пользователя: " + userId);
+                    return user;
+
+                } catch (IllegalArgumentException e) {
+                    System.out.println("Некорректный формат UUID.");
+                    return currentUser;
+                }
+            }
+
+            default: {
+                System.out.println("Неизвестная команда пользователя: " + action);
+                return currentUser;
+            }
+        }
     }
 }

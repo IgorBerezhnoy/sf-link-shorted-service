@@ -26,7 +26,7 @@ public class LinkService {
                     "Lifetime должен быть положительным"
             );
         }
-        
+
         for (int i = 0; i < 100; i++) {
             String shortCode = generator.generate();
 
@@ -56,6 +56,10 @@ public class LinkService {
 
         return shortLink.registerClick();
 
+    }
+
+    public int removeExpiredLinks() {
+        return repository.removeExpiredLinks();
     }
 
     public ShortLink findByCode(String code) {
