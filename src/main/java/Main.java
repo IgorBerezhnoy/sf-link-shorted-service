@@ -5,6 +5,7 @@ import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.Scanner;
 import java.util.UUID;
+import java.nio.file.Path;
 
 public class Main {
 
@@ -16,15 +17,30 @@ public class Main {
         LinkService linkService = new LinkService(repository, generator);
         UserRepository userRepository = new UserRepository();
 
+
+        FileStorage fileStorage = new FileStorage(
+                Path.of("data", "state.properties")
+        );
+
+        try {
+            fileStorage.load(userRepository, repository);
+            System.out.println("Сохранённые данные загружены.");
+        } catch (IOException e) {
+            System.err.println("Ошибка загрузки данных: " + e.getMessage());
+            return;
+        }
+
         Scanner scanner = new Scanner(System.in);
         User currentUser = null;
 
         System.out.println("Добро пожаловать в Link Shorted Service!");
         System.out.println("Введите 'help' для списка команд.");
 
+
         boolean running = true;
 
-        while (running) {
+        try {
+            while (running) {
             System.out.print("> ");
 
             if (!scanner.hasNextLine()) {
@@ -94,7 +110,23 @@ public class Main {
         }
 
         scanner.close();
+        } finally {
+            try {
+                linkService.removeExpiredLinks();
+
+                fileStorage.save(userRepository, repository);
+
+                System.out.println("Данные успешно сохранены.");
+            } catch (IOException e) {
+                System.err.println(
+                        "Ошибка сохранения данных: " + e.getMessage()
+                );
+            }
+
+            scanner.close();
+        }
     }
+
 
     private static void printHelp() {
         System.out.println("Доступные команды:");

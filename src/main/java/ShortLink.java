@@ -30,6 +30,32 @@ public class ShortLink {
         this.expiresAt = Instant.now().plus(lifetime);
     }
 
+    public ShortLink(
+            String originalUrl,
+            String shortCode,
+            UUID ownerId,
+            int maxClicks,
+            int clickCount,
+            Instant expiresAt
+    ) {
+        if (originalUrl == null || originalUrl.isBlank()
+                || shortCode == null || shortCode.isBlank()
+                || ownerId == null || expiresAt == null) {
+            throw new IllegalArgumentException("Некорректные данные ссылки");
+        }
+
+        if (maxClicks < 1 || clickCount < 0) {
+            throw new IllegalArgumentException("Некорректные счётчики переходов");
+        }
+
+        this.originalUrl = originalUrl;
+        this.shortCode = shortCode;
+        this.ownerId = ownerId;
+        this.maxClicks = maxClicks;
+        this.clickCount = clickCount;
+        this.expiresAt = expiresAt;
+    }
+
     public String getOriginalUrl() {
         return originalUrl;
     }

@@ -1,9 +1,14 @@
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Collection;
+import java.util.List;
 
 public class LinkRepository {
     private final Map<String, ShortLink> shortLinksMap = new HashMap<>();
 
+    public Collection<ShortLink> findAll() {
+        return List.copyOf(shortLinksMap.values());
+    }
 
     public boolean add(ShortLink link) {
         if (link != null && !exists(link.getShortCode())) {
@@ -18,6 +23,7 @@ public class LinkRepository {
         return shortLinksMap.get(code);
 
     }
+
     public boolean deleteByCode(String code) {
         return shortLinksMap.remove(code) != null;
     }
