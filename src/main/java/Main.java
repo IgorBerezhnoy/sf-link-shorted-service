@@ -336,6 +336,7 @@ public class Main {
             URI uri = URI.create(shortLink.getOriginalUrl());
             desktop.browse(uri);
 
+            System.out.println();
             System.out.println("Запрос на открытие ссылки передан браузеру: " + shortLink.getOriginalUrl());
 
             System.out
