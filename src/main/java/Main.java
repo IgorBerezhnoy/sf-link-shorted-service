@@ -12,9 +12,27 @@ public class Main {
     private static final String SHORT_LINK_PREFIX = "short-link.ru/";
 
     public static void main(String[] args) {
+        AppConfig config;
+
+        try {
+            config = AppConfig.load(Path.of("application.properties"));
+        } catch (IOException e) {
+            System.err.println(
+                    "Не удалось загрузить настройки: " + e.getMessage()
+            );
+            return;
+        }
+
         LinkRepository repository = new LinkRepository();
-        ShortCodeGenerator generator = new ShortCodeGenerator();
-        LinkService linkService = new LinkService(repository, generator);
+        ShortCodeGenerator generator =
+                new ShortCodeGenerator(config.codeLength());
+
+        LinkService linkService = new LinkService(
+                repository,
+                generator,
+                config.maxAllowedClicks()
+        );
+
         UserRepository userRepository = new UserRepository();
 
 
@@ -41,75 +59,75 @@ public class Main {
 
         try {
             while (running) {
-            System.out.print("> ");
+                System.out.print("> ");
 
-            if (!scanner.hasNextLine()) {
-                break;
+                if (!scanner.hasNextLine()) {
+                    break;
+                }
+
+                String command = scanner.nextLine().trim();
+                String[] commandParts = command.split("\\s+");
+                String mainCommand = commandParts[0];
+
+                // automatic removal of outdated links
+                int removedLinksCount = linkService.removeExpiredLinks();
+
+                if (removedLinksCount > 0) {
+                    System.out.println("Автоматическая очистка: удалено просроченных ссылок: " + removedLinksCount);
+                }
+
+                switch (mainCommand) {
+                    case "help": {
+                        printHelp();
+                        break;
+                    }
+
+                    case "exit": {
+                        System.out.println("Завершение программы...");
+                        running = false;
+                        break;
+                    }
+
+                    case "find": {
+                        handleFindCommand(scanner, linkService);
+                        break;
+                    }
+
+                    case "open": {
+                        handleOpenCommand(scanner, linkService);
+                        break;
+                    }
+
+                    case "create": {
+                        currentUser = handleCreateCommand(scanner, currentUser, linkService, userRepository, config);
+                        break;
+                    }
+
+                    case "user": {
+                        currentUser = handleUserCommand(
+                                commandParts, currentUser, userRepository
+                        );
+                        break;
+                    }
+
+                    case "link": {
+                        handleLinkCommand(commandParts, currentUser, linkService);
+                        break;
+                    }
+
+                    case "": {
+                        // Ignore the empty command
+                        break;
+                    }
+
+                    default: {
+                        System.out.println("Неизвестная команда: " + command);
+                        break;
+                    }
+                }
             }
 
-            String command = scanner.nextLine().trim();
-            String[] commandParts = command.split("\\s+");
-            String mainCommand = commandParts[0];
-
-            // automatic removal of outdated links
-            int removedLinksCount = linkService.removeExpiredLinks();
-
-            if (removedLinksCount > 0) {
-                System.out.println("Автоматическая очистка: удалено просроченных ссылок: " + removedLinksCount);
-            }
-
-            switch (mainCommand) {
-                case "help": {
-                    printHelp();
-                    break;
-                }
-
-                case "exit": {
-                    System.out.println("Завершение программы...");
-                    running = false;
-                    break;
-                }
-
-                case "find": {
-                    handleFindCommand(scanner, linkService);
-                    break;
-                }
-
-                case "open": {
-                    handleOpenCommand(scanner, linkService);
-                    break;
-                }
-
-                case "create": {
-                    currentUser = handleCreateCommand(scanner, currentUser, linkService, userRepository);
-                    break;
-                }
-
-                case "user": {
-                    currentUser = handleUserCommand(
-                            commandParts, currentUser, userRepository
-                    );
-                    break;
-                }
-
-                case "link": {
-                    handleLinkCommand(commandParts, currentUser, linkService);
-                    break;
-                }
-
-                case "": {
-                    // Ignore the empty command
-                    break;
-                }
-
-                default: {
-                    System.out.println("Неизвестная команда: " + command);
-                    break;
-                }
-            }
-        }
-
-        scanner.close();
+            scanner.close();
         } finally {
             try {
                 linkService.removeExpiredLinks();
@@ -146,7 +164,8 @@ public class Main {
     private static User handleCreateCommand(Scanner scanner,
                                             User currentUser,
                                             LinkService linkService,
-                                            UserRepository userRepository) {
+                                            UserRepository userRepository,
+                                            AppConfig config) {
         System.out.println("Введите URL, который хотите сократить:");
         String url = scanner.nextLine().trim();
 
@@ -172,51 +191,16 @@ public class Main {
             return currentUser;
         }
 
-        Duration lifetime;
-        String lifetimeDescription;
-
-        System.out.println("Выберите срок действия ссылки:\n" +
-                "1 - 1 час\n" +
-                "2 - 1 день\n" +
-                "3 - 7 дней");
-
-        try {
-            String input = scanner.nextLine().trim();
-            int lifetimeOption = Integer.parseInt(input);
-
-            switch (lifetimeOption) {
-                case (1): {
-                    lifetime = Duration.ofHours(1);
-                    lifetimeDescription = "1 час";
-                    break;
-                }
-
-                case (2): {
-                    lifetime = Duration.ofDays(1);
-                    lifetimeDescription = "1 день";
-                    break;
-
-                }
-                case (3): {
-                    lifetimeDescription = "7 дней";
-
-                    lifetime = Duration.ofDays(7);
-                    break;
-
-                }
-                default: {
-                    System.out.println("Ошибка: выберите вариант от 1 до 3.");
-                    return currentUser;
-                }
-
-
-            }
-
-
-        } catch (NumberFormatException e) {
-            System.out.println("Ошибка: введите целое число.");
+        if (maxCount > config.maxAllowedClicks()) {
+            System.out.println("Лимит не должен превышать максимально разрешённое значение.");
+            System.out.println(
+                    "Максимально допустимое количество переходов: "
+                            + config.maxAllowedClicks()
+            );
             return currentUser;
         }
+
+        Duration lifetime = config.lifetime();
 
 
         boolean isNewUser = currentUser == null;
@@ -241,7 +225,9 @@ public class Main {
             System.out.println("URL принят: " + url);
             System.out.println("Короткая ссылка: " + SHORT_LINK_PREFIX + link.getShortCode());
             System.out.println("Лимит переходов: " + link.getMaxClicks());
-            System.out.println("Срок действия ссылки: " + lifetimeDescription);
+            System.out.println(
+                    "Срок действия ссылки: " + lifetime.toHours() + " ч."
+            );
 
             System.out.println();
 

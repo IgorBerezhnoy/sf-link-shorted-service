@@ -5,10 +5,22 @@ public class LinkService {
 
     private final LinkRepository repository;
     private final ShortCodeGenerator generator;
+    private final int maxAllowedClicks;
 
-    public LinkService(LinkRepository repository, ShortCodeGenerator generator) {
+    public LinkService(
+            LinkRepository repository,
+            ShortCodeGenerator generator,
+            int maxAllowedClicks
+    ) {
+        if (maxAllowedClicks < 1) {
+            throw new IllegalArgumentException(
+                    "Максимальный лимит должен быть больше нуля"
+            );
+        }
+
         this.repository = repository;
         this.generator = generator;
+        this.maxAllowedClicks = maxAllowedClicks;
     }
 
     public ShortLink createShortLink(String originalUrl, UUID ownerId, int maxClicks, Duration lifetime) {
@@ -19,6 +31,12 @@ public class LinkService {
 
         if (maxClicks < 1) {
             throw new IllegalArgumentException("Лимит переходов должен быть больше нуля");
+        }
+
+        if (maxClicks > maxAllowedClicks) {
+            throw new IllegalArgumentException(
+                    "Максимально допустимый лимит: " + maxAllowedClicks
+            );
         }
 
         if (lifetime == null || lifetime.isZero() || lifetime.isNegative()) {
@@ -76,6 +94,12 @@ public class LinkService {
         if (newMaxClicks < 1) {
             throw new IllegalArgumentException(
                     "Лимит переходов должен быть больше нуля"
+            );
+        }
+
+        if (newMaxClicks > maxAllowedClicks) {
+            throw new IllegalArgumentException(
+                    "Максимально допустимый лимит: " + maxAllowedClicks
             );
         }
 
