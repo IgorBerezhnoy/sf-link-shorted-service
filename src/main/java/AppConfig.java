@@ -24,7 +24,14 @@ public record AppConfig(
         Properties properties = new Properties();
 
         try (InputStream input = Files.newInputStream(path)) {
-            properties.load(input);
+            try {
+                properties.load(input);
+            } catch (IllegalArgumentException e) {
+                throw new IOException(
+                        "Повреждён файл конфигурации: " + e.getMessage(),
+                        e
+                );
+            }
         }
 
         try {

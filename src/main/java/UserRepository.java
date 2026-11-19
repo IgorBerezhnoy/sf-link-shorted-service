@@ -1,7 +1,4 @@
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class UserRepository {
 
@@ -21,6 +18,6 @@ public class UserRepository {
     }
 
     public Collection<User> findAll() {
-        return users.values();
+        return List.copyOf(users.values());
     }
 }

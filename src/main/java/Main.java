@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.util.Scanner;
 import java.util.UUID;
 import java.nio.file.Path;
+import java.util.NoSuchElementException;
 
 public class Main {
 
@@ -76,54 +77,59 @@ public class Main {
                     System.out.println("Автоматическая очистка: удалено просроченных ссылок: " + removedLinksCount);
                 }
 
-                switch (mainCommand) {
-                    case "help": {
-                        printHelp();
-                        break;
-                    }
+                try {
+                    switch (mainCommand) {
+                        case "help": {
+                            printHelp();
+                            break;
+                        }
 
-                    case "exit": {
-                        System.out.println("Завершение программы...");
-                        running = false;
-                        break;
-                    }
+                        case "exit": {
+                            System.out.println("Завершение программы...");
+                            running = false;
+                            break;
+                        }
 
-                    case "find": {
-                        handleFindCommand(scanner, linkService);
-                        break;
-                    }
+                        case "find": {
+                            handleFindCommand(scanner, linkService);
+                            break;
+                        }
 
-                    case "open": {
-                        handleOpenCommand(scanner, linkService);
-                        break;
-                    }
+                        case "open": {
+                            handleOpenCommand(scanner, linkService);
+                            break;
+                        }
 
-                    case "create": {
-                        currentUser = handleCreateCommand(scanner, currentUser, linkService, userRepository, config);
-                        break;
-                    }
+                        case "create": {
+                            currentUser = handleCreateCommand(scanner, currentUser, linkService, userRepository, config);
+                            break;
+                        }
 
-                    case "user": {
-                        currentUser = handleUserCommand(
-                                commandParts, currentUser, userRepository
-                        );
-                        break;
-                    }
+                        case "user": {
+                            currentUser = handleUserCommand(
+                                    commandParts, currentUser, userRepository
+                            );
+                            break;
+                        }
 
-                    case "link": {
-                        handleLinkCommand(commandParts, currentUser, linkService);
-                        break;
-                    }
+                        case "link": {
+                            handleLinkCommand(commandParts, currentUser, linkService);
+                            break;
+                        }
 
-                    case "": {
-                        // Ignore the empty command
-                        break;
-                    }
+                        case "": {
+                            // Ignore the empty command
+                            break;
+                        }
 
-                    default: {
-                        System.out.println("Неизвестная команда: " + command);
-                        break;
+                        default: {
+                            System.out.println("Неизвестная команда: " + command);
+                            break;
+                        }
                     }
+                } catch (NoSuchElementException e) {
+                    System.out.println("\nВвод завершён. Завершаем программу...");
+                    running = false;
                 }
             }
 
