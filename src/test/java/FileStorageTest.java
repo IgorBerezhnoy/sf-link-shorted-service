@@ -1,10 +1,14 @@
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Properties;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -101,4 +105,78 @@ class FileStorageTest {
                 new LinkRepository()
         ));
     }
+
+
+    @Test
+    void missingOriginalUrlShouldCauseLoadError() throws Exception {
+        Path path = tempDir.resolve("broken.properties");
+
+        Properties properties = createValidProperties();
+        properties.remove("link.abc123.originalUrl");
+
+        writeProperties(path, properties);
+
+        FileStorage storage = new FileStorage(path);
+
+        assertThrows(
+                IOException.class,
+                () -> storage.load(
+                        new UserRepository(),
+                        new LinkRepository()
+                )
+        );
+    }
+
+    @Test
+    void invalidExpiresAtShouldCauseLoadError() throws Exception {
+        Path path = tempDir.resolve("broken-date.properties");
+
+        Properties properties = createValidProperties();
+        properties.setProperty(
+                "link.abc123.expiresAt",
+                "invalid-date"
+        );
+
+        writeProperties(path, properties);
+
+        FileStorage storage = new FileStorage(path);
+
+        assertThrows(
+                IOException.class,
+                () -> storage.load(
+                        new UserRepository(),
+                        new LinkRepository()
+                )
+        );
+    }
+
+    private Properties createValidProperties() {
+        UUID ownerId = UUID.randomUUID();
+        Properties properties = new Properties();
+
+        properties.setProperty("user." + ownerId, "true");
+
+        String prefix = "link.abc123.";
+
+        properties.setProperty(prefix + "originalUrl",
+                "https://example.com");
+        properties.setProperty(prefix + "ownerId",
+                ownerId.toString());
+        properties.setProperty(prefix + "maxClicks", "5");
+        properties.setProperty(prefix + "clickCount", "2");
+        properties.setProperty(prefix + "expiresAt",
+                Instant.now().plusSeconds(3600).toString());
+
+        return properties;
+    }
+
+    private void writeProperties(
+            Path path,
+            Properties properties
+    ) throws IOException {
+        try (OutputStream out = Files.newOutputStream(path)) {
+            properties.store(out, "test");
+        }
+    }
+
 }
